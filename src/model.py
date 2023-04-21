@@ -57,7 +57,7 @@ class Model:
             # for feature_name, feature_importance in zip(feature_names, feature_importances):
             #     print(f"Feature: {feature_name}, Importance: {feature_importance}")
 
-            self.test_model(model, X_train.columns)
+            # self.test_model(model)
 
             if accuracy > best_model_accuracy:
                 best_model = model
