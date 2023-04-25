@@ -1,11 +1,16 @@
 import logging
 import os
 import sys
+import json
 
 from time import sleep
 
 from pika import BlockingConnection, URLParameters
+
+from contracts import item_to_process
+from data_transformer import DataTransformer
 from matcher import Matcher
+from model import Model
 
 class MatcherService:
     def __init__(self, amqp_endpoint, matcher):
@@ -30,8 +35,10 @@ class MatcherService:
 
 
     def on_message_callback(self, ch, method, properties, body):
-        result = self.matcher.process_message(body)
-        logging.info("Received %r" % result)
+        decoded_message = json.loads(body)
+        logging.info("Received message %r" % decoded_message)
+        to_process = item_to_process.from_dict(decoded_message)
+        self.matcher.process_message(to_process)
 
     def __enter__(self):
         return self
@@ -42,7 +49,10 @@ class MatcherService:
 
 if __name__ == "__main__":
     amqp_endpoint = os.environ["AMQP_ENDPOINT"]
-    matcher = Matcher()
+    model = Model()
+    model.load_model(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/model/model.pkl")
+    data_transformer = DataTransformer()
+    matcher = Matcher(model=model, data_transformer=data_transformer)
     config = {}
     
     with MatcherService(amqp_endpoint=amqp_endpoint, matcher=matcher) as service:
