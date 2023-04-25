@@ -6,8 +6,6 @@ services:
         container_name: matcher
         ports:
             - 5000:5000
-        depends_on:
-            - rabbitmq
         environment:
             - AMQP_ENDPOINT=amqp://guest:guest@rabbitmq:5672
             - API_URL=http://api:8000
