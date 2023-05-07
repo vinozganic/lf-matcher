@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import requests
 from datetime import datetime
 
 import numpy as np
@@ -11,8 +12,9 @@ from gensim.models import KeyedVectors
 from shapely.geometry import Point, MultiLineString
 from sklearn.metrics.pairwise import cosine_similarity
 
+from constants import API_URL
 from contracts import item_to_process
-from exceptions import UnknownGeometryType
+from exceptions import APIException, UnknownGeometryType
 
 def patch_asscalar(a):
     return a.item()
@@ -22,23 +24,16 @@ setattr(np, 'asscalar', patch_asscalar)
 class DataTransformer:
     def __init__(self):
         self.type_similarity_matrix = self._load_type_similarity_matrix()
-        self.subtype_similarity_matrix = self._load_subtype_similarity_matrix()
 
     def prepare_data(self, lost_item : item_to_process, found_item: item_to_process):
         type_similarity = self._compute_type_similarity(lost_item.type, found_item.type)
-        subtype_similarity = self._compute_subtype_similarity(lost_item.subtype, found_item.subtype)
-        type_subtype_similarity = type_similarity * subtype_similarity
-
         color_distance = self._compute_color_distance(lost_item.color, found_item.color)
-
         min_distance, centroid_distance, overlap_area, overlap_ratio_lost, overlap_ratio_found = self._compute_location_parameters(lost_item.location, found_item.location)
-
         date_distance = self._compute_date_distance(lost_item.date, found_item.date)
 
         return {
             "type_similarity": type_similarity,
-            # "subtype_similarity": subtype_similarity,
-            "type_subtype_similarity": type_subtype_similarity,
+            "type_similarity": type_similarity,
             "color_distance": color_distance,
             "location_min_distance": min_distance,
             "location_centroid_distance": centroid_distance,
@@ -53,19 +48,9 @@ class DataTransformer:
             return 0
         return self.type_similarity_matrix[lost_item_type].get(found_item_type, 0)
     
-    def _compute_subtype_similarity(self, lost_item_subtype, found_item_subtype):
-        if self.subtype_similarity_matrix.get(lost_item_subtype) is None:
-            return 0
-        return self.subtype_similarity_matrix[lost_item_subtype].get(found_item_subtype, 0)
-
     def _load_type_similarity_matrix(self):
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         matrix = json.load(open(current_dir + "/model/type_similarity_matrix.json"))
-        return matrix
-
-    def _load_subtype_similarity_matrix(self):
-        current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        matrix = json.load(open(current_dir + "/model/subtype_similarity_matrix.json"))
         return matrix
 
     def _compute_color_distance(self, lost_item_color, found_item_color):
@@ -121,13 +106,16 @@ class DataTransformer:
 
         return overlap_area, overlap_ratio_lost, overlap_ratio_found
     
+    def get_types_from_db(self):
+        response = requests.get(f"{API_URL}/config/types").json()
+        if response["success"]:
+            data = response["data"]
+            return data
+        else:
+            raise APIException("Could not get items from database") 
+
     def calculate_similarity_matrixes(self):
-        all_types = ["clothes", "tech", "misc"]
-        all_subtypes = [
-            "tshirt", "shirt", "lstshirt", "trousers", "jeans", "shorts", "sweatpants", "sweatshirt", "jacket", "cap", "hat", "scarf", "gloves", "belt", "skirt", "dress", "sneakers", "shoes", "boots", "underpants", "socks",
-            "mobilePhone", "laptop", "tablet", "smartWatch", "usbstick", "wiredHeadphones", "wirelessHeadphones", "camera", "mouse", "keyboard",
-            "ring", "necklace", "earring", "anklet", "bracelet", "chain",  "sunglasses", "glasses", "umbrella", "keys", "book", "wristwatch", "ball", "pillow", "racket", "bat", "skis", "wallet", "bag", "purse", "backpack", "idCard", "drivingLicense", "passport", "guitar", "violin", "accordion"
-        ]
+        all_types = self.get_types_from_db()
 
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         model = KeyedVectors.load_word2vec_format(current_dir + "/model/glove.42B.300d.txt", binary=False, no_header=True)
@@ -153,33 +141,10 @@ class DataTransformer:
                 similarity = cosine_similarity([type_vectors[type1]], [type_vectors[type2]])[0][0]
                 type_similarity_matrix[type1][type2] = float(similarity)
 
-        subtype_vectors = {}
-        for subtype in all_subtypes:
-            if not subtype in model:
-                logging.info(f"Type {subtype} not in model")
-                continue
-            subtype_vectors[subtype] = model[subtype]
-
-        subtype_similarity_matrix = {}
-        for subtype1 in all_subtypes:
-            subtype_similarity_matrix[subtype1] = {}
-            subtype_similarity_matrix[subtype1][subtype1] = 1.0
-            for subtype2 in all_subtypes:
-                if not subtype1 in model:
-                    logging.info(f"Type {subtype1} not in model")
-                    break
-                if not subtype2 in model:
-                    logging.info(f"Type {subtype2} not in model")
-                    continue
-                similarity = cosine_similarity([subtype_vectors[subtype1]], [subtype_vectors[subtype2]])[0][0]
-                subtype_similarity_matrix[subtype1][subtype2] = float(similarity)
-
         current_dir = os.path.dirname(os.path.realpath(__file__))
         with open(current_dir + "/model/type_similarity_matrix.json", "w") as fp:
             json.dump(type_similarity_matrix, fp)
-        with open(current_dir + "/model/subtype_similarity_matrix.json", "w") as fp:
-            json.dump(subtype_similarity_matrix, fp)
+
 
         self.type_similarity_matrix = type_similarity_matrix
-        self.subtype_similarity_matrix = subtype_similarity_matrix
-        return type_similarity_matrix, subtype_similarity_matrix
+        return type_similarity_matrix

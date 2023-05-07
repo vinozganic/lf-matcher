@@ -31,7 +31,7 @@ prepared_non_matches = []
 
 data_transformer = DataTransformer()
 
-# type_similarity_matrix, subtype_similarity_matrix = data_transformer._save_similarity_matrixes()
+type_similarity_matrix = data_transformer.calculate_similarity_matrixes()
 
 matching_pairs = []
 non_matching_pairs = []
@@ -43,8 +43,8 @@ for lost_idx, lost in enumerate(losts_train_list):
             non_matching_pairs.append((lost_idx, found_idx))
 
 for lost_idx, found_idx in matching_pairs:
-    lost_to_process = item_to_process(id=losts_train_list[lost_idx]["_id"], item_type="lost", type=losts_train_list[lost_idx]["type"], subtype=losts_train_list[lost_idx]["subtype"], color=losts_train_list[lost_idx]["color"], location=losts_train_list[lost_idx]["location"], date=losts_train_list[lost_idx]["date"])
-    found_to_process = item_to_process(id=founds_train_list[found_idx]["_id"], item_type="found", type=founds_train_list[found_idx]["type"], subtype=founds_train_list[found_idx]["subtype"], color=founds_train_list[found_idx]["color"], location=founds_train_list[found_idx]["location"], date=founds_train_list[found_idx]["date"])
+    lost_to_process = item_to_process(id=losts_train_list[lost_idx]["_id"], item_type="lost", type=losts_train_list[lost_idx]["type"], color=losts_train_list[lost_idx]["color"], location=losts_train_list[lost_idx]["location"], date=losts_train_list[lost_idx]["date"])
+    found_to_process = item_to_process(id=founds_train_list[found_idx]["_id"], item_type="found", type=founds_train_list[found_idx]["type"], color=founds_train_list[found_idx]["color"], location=founds_train_list[found_idx]["location"], date=founds_train_list[found_idx]["date"])
     prepared = data_transformer.prepare_data(lost_to_process, found_to_process)
     prepared_df = pd.DataFrame(prepared, index=[0])
 
@@ -53,8 +53,8 @@ for lost_idx, found_idx in matching_pairs:
 
 random.shuffle(non_matching_pairs)
 for lost_idx, found_idx in non_matching_pairs[:len(matching_pairs)]:
-    lost_to_process = item_to_process(id=losts_train_list[lost_idx]["_id"], item_type="lost", type=losts_train_list[lost_idx]["type"], subtype=losts_train_list[lost_idx]["subtype"], color=losts_train_list[lost_idx]["color"], location=losts_train_list[lost_idx]["location"], date=losts_train_list[lost_idx]["date"])
-    found_to_process = item_to_process(id=founds_train_list[found_idx]["_id"], item_type="found", type=founds_train_list[found_idx]["type"], subtype=founds_train_list[found_idx]["subtype"], color=founds_train_list[found_idx]["color"], location=founds_train_list[found_idx]["location"], date=founds_train_list[found_idx]["date"])
+    lost_to_process = item_to_process(id=losts_train_list[lost_idx]["_id"], item_type="lost", type=losts_train_list[lost_idx]["type"], color=losts_train_list[lost_idx]["color"], location=losts_train_list[lost_idx]["location"], date=losts_train_list[lost_idx]["date"])
+    found_to_process = item_to_process(id=founds_train_list[found_idx]["_id"], item_type="found", type=founds_train_list[found_idx]["type"], color=founds_train_list[found_idx]["color"], location=founds_train_list[found_idx]["location"], date=founds_train_list[found_idx]["date"])
     prepared = data_transformer.prepare_data(lost_to_process, found_to_process)
     prepared_df = pd.DataFrame(prepared, index=[0])
 
@@ -80,8 +80,8 @@ for lost_idx, lost in enumerate(losts_test_list):
 
 test_data = []
 for lost_idx, found_idx in matching_test_pairs:
-    lost_to_process = item_to_process(id=losts_test_list[lost_idx]["_id"], item_type="lost", type=losts_test_list[lost_idx]["type"], subtype=losts_test_list[lost_idx]["subtype"], color=losts_test_list[lost_idx]["color"], location=losts_test_list[lost_idx]["location"], date=losts_test_list[lost_idx]["date"])
-    found_to_process = item_to_process(id=founds_test_list[found_idx]["_id"], item_type="found", type=founds_test_list[found_idx]["type"], subtype=founds_test_list[found_idx]["subtype"], color=founds_test_list[found_idx]["color"], location=founds_test_list[found_idx]["location"], date=founds_test_list[found_idx]["date"])
+    lost_to_process = item_to_process(id=losts_test_list[lost_idx]["_id"], item_type="lost", type=losts_test_list[lost_idx]["type"], color=losts_test_list[lost_idx]["color"], location=losts_test_list[lost_idx]["location"], date=losts_test_list[lost_idx]["date"])
+    found_to_process = item_to_process(id=founds_test_list[found_idx]["_id"], item_type="found", type=founds_test_list[found_idx]["type"], color=founds_test_list[found_idx]["color"], location=founds_test_list[found_idx]["location"], date=founds_test_list[found_idx]["date"])
     prepared = data_transformer.prepare_data(lost_to_process, found_to_process)
     prepared_df = pd.DataFrame(prepared, index=[0])
 
@@ -90,8 +90,8 @@ for lost_idx, found_idx in matching_test_pairs:
 
 random.shuffle(non_matching_test_pairs)
 for lost_idx, found_idx in non_matching_test_pairs[:len(matching_test_pairs)]:
-    lost_to_process = item_to_process(id=losts_test_list[lost_idx]["_id"], item_type="lost", type=losts_test_list[lost_idx]["type"], subtype=losts_test_list[lost_idx]["subtype"], color=losts_test_list[lost_idx]["color"], location=losts_test_list[lost_idx]["location"], date=losts_test_list[lost_idx]["date"])
-    found_to_process = item_to_process(id=founds_test_list[found_idx]["_id"], item_type="found", type=founds_test_list[found_idx]["type"], subtype=founds_test_list[found_idx]["subtype"], color=founds_test_list[found_idx]["color"], location=founds_test_list[found_idx]["location"], date=founds_test_list[found_idx]["date"])
+    lost_to_process = item_to_process(id=losts_test_list[lost_idx]["_id"], item_type="lost", type=losts_test_list[lost_idx]["type"], color=losts_test_list[lost_idx]["color"], location=losts_test_list[lost_idx]["location"], date=losts_test_list[lost_idx]["date"])
+    found_to_process = item_to_process(id=founds_test_list[found_idx]["_id"], item_type="found", type=founds_test_list[found_idx]["type"], color=founds_test_list[found_idx]["color"], location=founds_test_list[found_idx]["location"], date=founds_test_list[found_idx]["date"])
     prepared = data_transformer.prepare_data(lost_to_process, found_to_process)
     prepared_df = pd.DataFrame(prepared, index=[0])
 
