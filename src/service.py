@@ -5,7 +5,7 @@ import json
 
 from time import sleep
 
-from pika import BlockingConnection, URLParameters
+from pika import BlockingConnection, PlainCredentials, ConnectionParameters, URLParameters
 
 from contracts import item_to_process
 from data_transformer import DataTransformer
@@ -13,21 +13,22 @@ from matcher import Matcher
 from model import Model
 
 class MatcherService:
-    def __init__(self, amqp_endpoint, matcher):
-        self.amqp_endpoint = amqp_endpoint
+    def __init__(self, connection_parameters, matcher):
+        self.connection_parameters = connection_parameters
         self.matcher = matcher
+        self.connection = None
+        self.channel = None
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
     def start(self):
-        connected = False
-        while not connected:
+        while not self.connection:
             try:
-                self.connection = BlockingConnection(URLParameters(self.amqp_endpoint))
+                self.connection = BlockingConnection(self.connection_parameters)
                 self.channel = self.connection.channel()
-                connected = True
             except Exception as e:
                 logging.info("Error connecting to AMQP endpoint. Retrying in 5 seconds...")
                 sleep(5)
+        logging.info("Connected to RabbitMQ.")
 
         self.channel.queue_declare(queue='matcher.item_to_process', durable=True)
         self.channel.basic_consume(queue='matcher.item_to_process', on_message_callback=self.on_message_callback, auto_ack=True)
@@ -48,12 +49,22 @@ class MatcherService:
         self.connection.close()
 
 if __name__ == "__main__":
-    amqp_endpoint = os.environ["AMQP_ENDPOINT"]
+    connection_parameters = None
+    if os.environ.get("RABBITMQ_HOST") is None:
+        amqp_endpoint = os.environ["AMQP_ENDPOINT"]
+        connection_parameters = URLParameters(amqp_endpoint)
+    else:
+        host = os.environ["RABBITMQ_HOST"]
+        port = os.environ["RABBITMQ_PORT"]
+        username = os.environ["RABBITMQ_USERNAME"]
+        password = os.environ["RABBITMQ_PASSWORD"]
+        credentials = PlainCredentials(username, password)
+        connection_parameters = ConnectionParameters(host, port, '/', credentials)
     model = Model()
     model.load_model(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/model/model.pkl")
     data_transformer = DataTransformer()
     matcher = Matcher(model=model, data_transformer=data_transformer)
     config = {}
     
-    with MatcherService(amqp_endpoint=amqp_endpoint, matcher=matcher) as service:
+    with MatcherService(connection_parameters=connection_parameters, matcher=matcher) as service:
         service.start()
