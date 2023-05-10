@@ -52,7 +52,7 @@ class DataTransformer:
     
     def _load_type_similarity_matrix(self):
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        matrix = json.load(open(current_dir + "/model/subtype_similarity_matrix.json"))
+        matrix = json.load(open(current_dir + "/model/type_similarity_matrix.json"))
         return matrix
 
     def _compute_color_distance(self, lost_item_color, found_item_color):
@@ -179,7 +179,7 @@ class DataTransformer:
                 type_similarity_matrix[type1][type2] = float(similarity)
 
         current_dir = os.path.dirname(os.path.realpath(__file__))
-        with open(current_dir + "/model/subtype_similarity_matrix.json", "w") as fp:
+        with open(current_dir + "/model/type_similarity_matrix.json", "w") as fp:
             json.dump(type_similarity_matrix, fp)
 
 
