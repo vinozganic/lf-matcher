@@ -9,8 +9,11 @@ from colormath.color_diff import delta_e_cie2000
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 from gensim.models import KeyedVectors
+from pyproj import CRS, Transformer
 from shapely.geometry import Point, MultiLineString
+from shapely.ops import unary_union, transform
 from sklearn.metrics.pairwise import cosine_similarity
+
 
 from constants import API_URL
 from contracts import item_to_process
@@ -32,7 +35,6 @@ class DataTransformer:
         date_distance = self._compute_date_distance(lost_item.date, found_item.date)
 
         return {
-            "type_similarity": type_similarity,
             "type_similarity": type_similarity,
             "color_distance": color_distance,
             "location_min_distance": min_distance,
@@ -71,6 +73,9 @@ class DataTransformer:
     def _compute_location_parameters(self, lost_item_location, found_item_location):
         lost_geom = self._get_geometry(lost_item_location)
         found_geom = self._get_geometry(found_item_location)
+        
+        lost_geom = self._transform_geometry_to_wgs84(lost_geom)
+        found_geom = self._transform_geometry_to_wgs84(found_geom)
 
         min_distance = self._get_min_distance(lost_geom, found_geom)
         centroid_distance = self._get_centroid_distance(lost_geom, found_geom)
@@ -79,12 +84,41 @@ class DataTransformer:
         return min_distance, centroid_distance, overlap_area, overlap_ratio_lost, overlap_ratio_found
 
     def _get_geometry(self, item_location):
-        if item_location["type"] == "Point":
-            return Point(item_location["coordinates"])
-        elif item_location["type"] == "MultiLineString":
-            return MultiLineString(item_location["coordinates"])
-        else:
-            raise UnknownGeometryType(f"Unknown geometry type: {item_location['type']}")
+        path_geom = None
+        if item_location.get("path") is not None:
+            if item_location["path"]["type"] == "Point":
+                path_geom = Point(item_location["path"]["coordinates"])
+            elif item_location["path"]["type"] == "MultiLineString":
+                path_geom = MultiLineString(item_location["path"]["coordinates"])
+
+        public_transport_lines_geom = None
+        if item_location.get("publicTransportLines") is not None:
+            public_transport_lines = []
+            for line in item_location["publicTransportLines"]:
+                public_transport_lines.append(line["coordinates"])
+            public_transport_lines_geom = MultiLineString(public_transport_lines)
+
+        geom = None
+        if path_geom is not None and public_transport_lines_geom is not None:
+            geom = unary_union([path_geom, public_transport_lines_geom])
+        elif path_geom is not None:
+            geom = path_geom
+        elif public_transport_lines_geom is not None:
+            geom = public_transport_lines_geom
+
+        if geom is None:
+            raise UnknownGeometryType("Unknown geometry type")
+        
+        return geom
+    
+    def _transform_geometry_to_wgs84(self, geom):
+        source_crs = CRS.from_epsg(4326)
+        target_crs = CRS.from_epsg(32633)
+
+        transformer = Transformer.from_crs(source_crs, target_crs, always_xy=True)
+        geom_wgs84 = transform(transformer.transform, geom)
+
+        return geom_wgs84
         
     def _get_min_distance(self, lost_geom, found_geom):
         return lost_geom.distance(found_geom)
@@ -96,8 +130,8 @@ class DataTransformer:
         return lost_geom_buffer.intersection(found_geom_buffer).area
     
     def _get_overlap_ratio(self, lost_geom, found_geom):
-        lost_geom_buffer = lost_geom.buffer(0.008)
-        found_geom_buffer = found_geom.buffer(0.008)
+        lost_geom_buffer = lost_geom.buffer(1000)
+        found_geom_buffer = found_geom.buffer(1000)
         
         overlap_area = self._get_overlap_area(lost_geom_buffer, found_geom_buffer)
 

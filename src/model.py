@@ -13,7 +13,7 @@ class Model:
         self.feature_names = self.model.feature_names
     
     def predict(self, X):
-        X.reindex(columns=self.feature_names, fill_value=0)
+        # X.reindex(columns=self.feature_names, fill_value=0)
         prediction = self.model.predict_proba(X)
         print(f"Prediction: {prediction}")
         return prediction[0][1]
