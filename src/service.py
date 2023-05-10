@@ -25,10 +25,10 @@ class MatcherService:
             try:
                 self.connection = BlockingConnection(self.connection_parameters)
                 self.channel = self.connection.channel()
+                logging.info("Connected to RabbitMQ.")
             except Exception as e:
                 logging.info("Error connecting to AMQP endpoint. Retrying in 5 seconds...")
                 sleep(5)
-        logging.info("Connected to RabbitMQ.")
 
         self.channel.queue_declare(queue='matcher.item_to_process', durable=True)
         self.channel.basic_consume(queue='matcher.item_to_process', on_message_callback=self.on_message_callback, auto_ack=True)
