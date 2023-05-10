@@ -52,7 +52,7 @@ class DataTransformer:
     
     def _load_type_similarity_matrix(self):
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        matrix = json.load(open(current_dir + "/model/type_similarity_matrix.json"))
+        matrix = json.load(open(current_dir + "/model/subtype_similarity_matrix.json"))
         return matrix
 
     def _compute_color_distance(self, lost_item_color, found_item_color):
@@ -66,9 +66,9 @@ class DataTransformer:
         return delta_e
     
     def _compute_date_distance(self, lost_item_date, found_item_date):
-        lost_date = datetime.strptime(lost_item_date, "%Y-%m-%dT%H:%M:%S.%fZ")
-        found_date = datetime.strptime(found_item_date, "%Y-%m-%dT%H:%M:%S.%fZ")
-        return abs((lost_date - found_date).days)
+        # lost_date = datetime.strptime(lost_item_date, "%Y-%m-%dT%H:%M:%S.%fZ")
+        # found_date = datetime.strptime(found_item_date, "%Y-%m-%dT%H:%M:%S.%fZ")
+        return abs((lost_item_date - found_item_date).days)
 
     def _compute_location_parameters(self, lost_item_location, found_item_location):
         lost_geom = self._get_geometry(lost_item_location)
@@ -130,8 +130,8 @@ class DataTransformer:
         return lost_geom_buffer.intersection(found_geom_buffer).area
     
     def _get_overlap_ratio(self, lost_geom, found_geom):
-        lost_geom_buffer = lost_geom.buffer(1000)
-        found_geom_buffer = found_geom.buffer(1000)
+        lost_geom_buffer = lost_geom.buffer(800)
+        found_geom_buffer = found_geom.buffer(800)
         
         overlap_area = self._get_overlap_area(lost_geom_buffer, found_geom_buffer)
 
@@ -149,6 +149,9 @@ class DataTransformer:
             raise APIException("Could not get items from database") 
 
     def calculate_similarity_matrixes(self):
+        if self.type_similarity_matrix:
+            return self.type_similarity_matrix
+
         all_types = self.get_types_from_db()
 
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -176,7 +179,7 @@ class DataTransformer:
                 type_similarity_matrix[type1][type2] = float(similarity)
 
         current_dir = os.path.dirname(os.path.realpath(__file__))
-        with open(current_dir + "/model/type_similarity_matrix.json", "w") as fp:
+        with open(current_dir + "/model/subtype_similarity_matrix.json", "w") as fp:
             json.dump(type_similarity_matrix, fp)
 
 
