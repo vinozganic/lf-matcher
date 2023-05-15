@@ -38,7 +38,8 @@ class Matcher:
             prepared_df = prepared_df.reindex(columns=self.model.feature_names, fill_value=0)
 
             probability = self.model.predict(prepared_df.values)
-            yield match_result(lost_id=lost_item.id, found_id=found_item.id, match_probability=probability)
+            if probability > 0.05:
+                yield match_result(lost_id=lost_item.id, found_id=found_item.id, match_probability=probability)
 
     ## SPREMANJE LOKACIJA SAD RADI, DALJE TREBA POBOLJŠATI MODEL
     def get_items_from_db(self, item_type):

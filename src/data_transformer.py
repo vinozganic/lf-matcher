@@ -31,7 +31,7 @@ class DataTransformer:
     def prepare_data(self, lost_item : item_to_process, found_item: item_to_process):
         type_similarity = self._compute_type_similarity(lost_item.type, found_item.type)
         color_distance = self._compute_color_distance(lost_item.color, found_item.color)
-        min_distance, centroid_distance, overlap_area, overlap_ratio_lost, overlap_ratio_found = self._compute_location_parameters(lost_item.location, found_item.location)
+        min_distance, centroid_distance, overlap_area, overlap_ratio, = self._compute_location_parameters(lost_item.location, found_item.location)
         date_distance = self._compute_date_distance(lost_item.date, found_item.date)
 
         return {
@@ -39,9 +39,8 @@ class DataTransformer:
             "color_distance": color_distance,
             "location_min_distance": min_distance,
             "location_centroid_distance": centroid_distance,
-            "location_overlap_area": overlap_area,
-            "location_overlap_ratio_lost": overlap_ratio_lost,
-            "location_overlap_ratio_found": overlap_ratio_found,
+            # "location_overlap_area": overlap_area,
+            "location_overlap_ratio": overlap_ratio,
             "date_distance": date_distance,
         }
 
@@ -66,9 +65,9 @@ class DataTransformer:
         return delta_e
     
     def _compute_date_distance(self, lost_item_date, found_item_date):
-        lost_date = datetime.strptime(lost_item_date, "%Y-%m-%dT%H:%M:%S.%fZ")
-        found_date = datetime.strptime(found_item_date, "%Y-%m-%dT%H:%M:%S.%fZ")
-        return abs((lost_date - found_date).days)
+        # lost_date = datetime.strptime(lost_item_date, "%Y-%m-%dT%H:%M:%S.%fZ")
+        # found_date = datetime.strptime(found_item_date, "%Y-%m-%dT%H:%M:%S.%fZ")
+        return abs((lost_item_date - found_item_date).days)
 
     def _compute_location_parameters(self, lost_item_location, found_item_location):
         lost_geom = self._get_geometry(lost_item_location)
@@ -77,11 +76,15 @@ class DataTransformer:
         lost_geom = self._transform_geometry_to_wgs84(lost_geom)
         found_geom = self._transform_geometry_to_wgs84(found_geom)
 
+        lost_geom_buffer = lost_geom.buffer(500)
+        found_geom_buffer = found_geom.buffer(500)
+
         min_distance = self._get_min_distance(lost_geom, found_geom)
         centroid_distance = self._get_centroid_distance(lost_geom, found_geom)
-        overlap_area, overlap_ratio_lost, overlap_ratio_found = self._get_overlap_ratio(lost_geom, found_geom)
+        overlap_area = self._get_overlap_area(lost_geom_buffer, found_geom_buffer)
+        overlap_ratio = self._get_overlap_ratio(lost_geom_buffer, found_geom_buffer, overlap_area)
 
-        return min_distance, centroid_distance, overlap_area, overlap_ratio_lost, overlap_ratio_found
+        return min_distance, centroid_distance, overlap_area, overlap_ratio
 
     def _get_geometry(self, item_location):
         path_geom = None
@@ -129,16 +132,8 @@ class DataTransformer:
     def _get_overlap_area(self, lost_geom_buffer, found_geom_buffer):
         return lost_geom_buffer.intersection(found_geom_buffer).area
     
-    def _get_overlap_ratio(self, lost_geom, found_geom):
-        lost_geom_buffer = lost_geom.buffer(1000)
-        found_geom_buffer = found_geom.buffer(1000)
-        
-        overlap_area = self._get_overlap_area(lost_geom_buffer, found_geom_buffer)
-
-        overlap_ratio_lost = overlap_area / lost_geom_buffer.area
-        overlap_ratio_found = overlap_area / found_geom_buffer.area
-
-        return overlap_area, overlap_ratio_lost, overlap_ratio_found
+    def _get_overlap_ratio(self, lost_geom_buffer, found_geom_buffer, overlap_area):
+        return overlap_area / (lost_geom_buffer.area + found_geom_buffer.area - overlap_area)
     
     def get_types_from_db(self):
         response = requests.get(f"{API_URL}/config/types").json()
@@ -149,6 +144,9 @@ class DataTransformer:
             raise APIException("Could not get items from database") 
 
     def calculate_similarity_matrixes(self):
+        if self.type_similarity_matrix:
+            return self.type_similarity_matrix
+
         all_types = self.get_types_from_db()
 
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

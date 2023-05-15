@@ -51,13 +51,14 @@ class Model:
             print("Accuracy score: ", accuracy, "F1 score: ", f1)
             
             # --- Uncomment to see feature importances ---
-            # feature_names = X_train.columns
-            # feature_importances = model.feature_importances_
+            feature_names = X_train.columns
+            feature_importances = model.feature_importances_
 
-            # for feature_name, feature_importance in zip(feature_names, feature_importances):
-            #     print(f"Feature: {feature_name}, Importance: {feature_importance}")
+            print("Feature importances: ")
+            for feature_name, feature_importance in zip(feature_names, feature_importances):
+                 print(f"Feature: {feature_name}, Importance: {feature_importance}")
 
-            # self.test_model(model)
+            self.test_model(model)
 
             if accuracy > best_model_accuracy:
                 best_model = model
