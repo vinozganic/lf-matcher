@@ -2,6 +2,8 @@ import os
 import random
 
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 from pymongo import MongoClient
 
 from constants import ITEMS_URL
@@ -34,6 +36,7 @@ data_transformer = DataTransformer()
 type_similarity_matrix = data_transformer.calculate_similarity_matrixes()
 
 matching_pairs = []
+type_matching_pairs = []
 non_matching_pairs = []
 for lost_idx, lost in enumerate(losts_train_list):
     for found_idx, found in enumerate(founds_train_list):
@@ -52,7 +55,11 @@ for lost_idx, found_idx in matching_pairs:
     prepared_matches.append(prepared_df)
 
 random.shuffle(non_matching_pairs)
-for lost_idx, found_idx in non_matching_pairs[:len(matching_pairs)]:
+print("Matching:", len(matching_pairs))
+print("Non matching:", len(non_matching_pairs))
+counter = 0
+# for lost_idx, found_idx in non_matching_pairs[:len(matching_pairs)*200]:
+for lost_idx, found_idx in non_matching_pairs: 
     lost_to_process = item_to_process(id=losts_train_list[lost_idx]["_id"], item_type="lost", type_=losts_train_list[lost_idx]["type"], color=losts_train_list[lost_idx]["color"], location=losts_train_list[lost_idx]["location"], date=losts_train_list[lost_idx]["date"])
     found_to_process = item_to_process(id=founds_train_list[found_idx]["_id"], item_type="found", type_=founds_train_list[found_idx]["type"], color=founds_train_list[found_idx]["color"], location=founds_train_list[found_idx]["location"], date=founds_train_list[found_idx]["date"])
     prepared = data_transformer.prepare_data(lost_to_process, found_to_process)
@@ -60,6 +67,9 @@ for lost_idx, found_idx in non_matching_pairs[:len(matching_pairs)]:
 
     prepared_df["label"] = 0
     prepared_non_matches.append(prepared_df)
+    if counter % 1000 == 0:
+        print(f"Processed {counter} non-matching pairs of {len(non_matching_pairs)}")
+    counter += 1
 
 prepared_balanced = prepared_matches + prepared_non_matches
 
@@ -89,7 +99,7 @@ for lost_idx, found_idx in matching_test_pairs:
     test_data.append(prepared_df)
 
 random.shuffle(non_matching_test_pairs)
-for lost_idx, found_idx in non_matching_test_pairs[:len(matching_test_pairs)]:
+for lost_idx, found_idx in non_matching_test_pairs[:len(matching_test_pairs)*50]:
     lost_to_process = item_to_process(id=losts_test_list[lost_idx]["_id"], item_type="lost", type_=losts_test_list[lost_idx]["type"], color=losts_test_list[lost_idx]["color"], location=losts_test_list[lost_idx]["location"], date=losts_test_list[lost_idx]["date"])
     found_to_process = item_to_process(id=founds_test_list[found_idx]["_id"], item_type="found", type_=founds_test_list[found_idx]["type"], color=founds_test_list[found_idx]["color"], location=founds_test_list[found_idx]["location"], date=founds_test_list[found_idx]["date"])
     prepared = data_transformer.prepare_data(lost_to_process, found_to_process)
